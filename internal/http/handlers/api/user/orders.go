@@ -13,14 +13,98 @@ import (
 )
 
 func GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
-	//запросить все данные из бд
-	//Запросить все данные из сервиса
+	chUserId := make(chan int)
+	go func(login string, chOut chan int) {
+		userId, err := storage.GetUserId(login)
 
-	//сопоставить данные запросов
-	//сформировать структуру на отправку
-	//отправить получивщийся массив
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-	w.WriteHeader(http.StatusNotImplemented)
+		chOut <- userId
+		close(chOut)
+	}(r.Header.Get("login"), chUserId)
+
+	chIn := make(chan entities.Order)
+	go func(chUserId <-chan int, chOut chan entities.Order) {
+		orders := storage.GetAllOrders(<-chUserId)
+
+		for _, order := range orders {
+			chOut <- order
+		}
+
+		close(chOut)
+	}(chUserId, chIn)
+
+	chOut := make(chan entities.Order)
+	chOrdersForUpdate := make(chan entities.Order)
+
+	go func(chIn <-chan entities.Order, chOut chan entities.Order, chOrdersForUpdate chan entities.Order) {
+		for order := range chIn {
+			if order.Status == "REGISTRED" || order.Status == "PROCESSED" {
+				var order entities.Order
+
+				response, err := http.Get(api.AccrualSystemAddress + "/api/orders/" + order.ID)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+				defer response.Body.Close()
+
+				var queryOrder entities.Order
+				err = json.NewDecoder(response.Body).Decode(&queryOrder)
+
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+				order.Status = queryOrder.Status
+				order.Accrual = queryOrder.Accrual
+
+				chOrdersForUpdate <- order
+			}
+
+			chOut <- order
+		}
+
+		close(chOrdersForUpdate)
+		close(chOut)
+	}(chIn, chOut, chOrdersForUpdate)
+
+	go func(chIn <-chan entities.Order) {
+		for order := range chIn {
+			err := storage.UpdateOrder(order)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+	}(chOrdersForUpdate)
+
+	result := []entities.Order{}
+	for order := range chOut {
+		result = append(result, order)
+	}
+
+	if len(result) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	bytes, err := json.Marshal(result)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(bytes)
+
 }
 
 func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
