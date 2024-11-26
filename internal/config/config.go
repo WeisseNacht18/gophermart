@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	defaultRunAddress = "localhost:8080"
+	defaultRunAddress = "localhost:8088"
 )
 
 type Config struct {
