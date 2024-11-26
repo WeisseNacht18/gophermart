@@ -206,3 +206,41 @@ func GetAllOrders(userID int) (orders []entities.Order) {
 
 	return
 }
+
+func MakeBalance(userID int) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	const query = "INSERT INTO balance (user_id) VALUES ($1)"
+	_, err = DB.ExecContext(ctx, query, userID)
+
+	return
+}
+
+func UpdateBalance(userID int, current float32, withdrawn float32) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	const query = "UPDATE balance SET balance = $1, withdrawn = $2 WHERE user_id = $3"
+	_, err = DB.ExecContext(ctx, query, current, withdrawn, userID)
+
+	return
+}
+
+func GetBalance(userID int) (balance entities.Balance, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	log.Println("First inner point")
+
+	const query = "SELECT balance, withdrawn FROM balance WHERE user_id = $1 LIMIT 1"
+	row := DB.QueryRowContext(ctx, query, userID)
+
+	log.Println("First inner point")
+
+	err = row.Scan(&balance.Current, &balance.Withdrawn)
+
+	log.Println(err)
+
+	return
+}
