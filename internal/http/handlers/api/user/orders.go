@@ -104,7 +104,6 @@ func GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Write(bytes)
-
 }
 
 func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +139,7 @@ func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
 		chOrder := make(chan entities.Order)
 		chAddBalance := make(chan entities.Order)
 		go func(orderId string, chOut chan entities.Order, chBalance chan entities.Order) {
-			/*var order entities.Order
+			var order entities.Order
 
 			response, err := http.Get(api.AccrualSystemAddress + "/api/orders/" + orderId)
 			if err != nil {
@@ -154,12 +153,6 @@ func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
-			}*/
-
-			order := entities.Order{
-				ID:      orderId,
-				Status:  "PROCESSED",
-				Accrual: 125.4,
 			}
 
 			chOut <- order

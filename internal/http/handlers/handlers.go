@@ -13,5 +13,5 @@ func AddHandlersToRouter(router *chi.Mux) {
 	router.Get("/api/user/orders", api.GetOrdersHandler)
 	router.Get("/api/user/balance", api_user_balance.GetBalanceHandler)
 	router.Post("/api/user/balance/withdraw", api_user_balance.PostBalanceWithdrawHandler)
-	router.Post("/api/user/withdrawals", api.GetWithdrawalsHandler)
+	router.Get("/api/user/withdrawals", api.GetWithdrawalsHandler)
 }

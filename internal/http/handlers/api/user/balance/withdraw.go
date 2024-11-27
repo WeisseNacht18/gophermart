@@ -48,7 +48,17 @@ func PostBalanceWithdrawHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		storage.UpdateBalance(userId, balance.Current-query.Sum, balance.Withdrawn+query.Sum)
+		err = storage.UpdateBalance(userId, balance.Current-query.Sum, balance.Withdrawn+query.Sum)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		err = storage.AddWithdraw(userId, query.Order, query.Sum)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 		return
