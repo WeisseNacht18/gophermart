@@ -1,6 +1,6 @@
 module github.com/WeisseNacht18/gophermart
 
-go 1.23.2
+go 1.22.5
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2

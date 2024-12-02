@@ -104,7 +104,6 @@ func GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Write(bytes)
-
 }
 
 func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +137,8 @@ func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}(r.Header.Get("login"), chUserId)
 
 		chOrder := make(chan entities.Order)
-		go func(orderId string, chOut chan entities.Order) {
+		chAddBalance := make(chan entities.Order)
+		go func(orderId string, chOut chan entities.Order, chBalance chan entities.Order) {
 			var order entities.Order
 
 			response, err := http.Get(api.AccrualSystemAddress + "/api/orders/" + orderId)
@@ -156,8 +156,11 @@ func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			chOut <- order
+			chBalance <- order
+
 			close(chOut)
-		}(orderId, chOrder)
+			close(chBalance)
+		}(orderId, chOrder, chAddBalance)
 
 		chExistLinkOrderAndUser := make(chan bool)
 		chOrderUserId := make(chan int)
@@ -172,7 +175,26 @@ func AddOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}(orderId, chExistLinkOrderAndUser, chOrderUserId)
 
 		if !<-chExistLinkOrderAndUser {
-			storage.AddOrder(<-chOrder, <-chUserId)
+			userID := <-chUserId
+			order := <-chOrder
+			err = storage.AddOrder(order, userID)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			balance, err := storage.GetBalance(userID)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			err = storage.UpdateBalance(userID, balance.Current+float32(order.Accrual), balance.Withdrawn)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}

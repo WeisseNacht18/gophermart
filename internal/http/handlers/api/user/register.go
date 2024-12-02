@@ -37,6 +37,18 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		userId, err := storage.GetUserId(content.Login)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		err = storage.MakeBalance(userId)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		token, err := storage.AddToken(content.Login)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
